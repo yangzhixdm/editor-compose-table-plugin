@@ -1,2 +1,2 @@
 # editor-compose-table-plugin
-use to compose table in wangeditor
+a plugin used to merge tables in wangeditor.
