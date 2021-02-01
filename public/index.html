@@ -25,9 +25,190 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>React App</title>
+    <style>
+      table {
+        border-top: 1px solid #ccc;
+        border-left: 1px solid #ccc;
+        border-collapse: collapse;
+        user-select: none;
+      }
+      td {
+        padding: 0 10px;
+        border: 1px solid #ccc;
+        width: 100px;
+      }
+      td[select-dom-last="1"]{
+        background-color: #edf5ff;
+      }
+      td[select-dom-first="1"]{
+        background-color: #edf5ff;
+      }
+      td[select-dom="1"]{
+        background-color: #edf5ff;
+      }
+    </style>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <button id="compose">合并</button></button>
+    <div contenteditable="true">
+      <table style="margin: 0 auto" width="500" border="1" cellpadding="0" cellspacing="0">
+        <tr>
+          <td>测试一下11</td>
+          <td>测试一下12</td>
+          <td>测试一下13</td>
+          <td>测试一下14</td>
+          <td>测试一下15</td>
+        </tr>
+        <tr>
+          <td>测试一下21</td>
+          <td colspan="2">测试一下22</td>
+          <td>测试一下24</td>
+          <td>测试一下25</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </table>
+    </div>
+    <script>
+      let select = 0
+      document.querySelector('table').addEventListener('mousedown', (e) => {
+        let element = e.target;
+        if (element.nodeName === 'TD' && select === 0) {
+          select = 1
+          console.log('td')
+          element.setAttribute('select-dom-first', 1)
+        }
+      })
+
+      document.querySelector('table').addEventListener('mouseup', (e) => {
+        let element = e.target;
+        if (element.nodeName === 'TD' && select === 1) {
+          select = 0
+          console.log('td')
+          element.setAttribute('select-dom-last', 1)
+        }
+      })
+
+      document.querySelector('table').addEventListener('mousemove', (e) => {
+        let element = e.target;
+        // 移动的过程中，进行渲染选择
+        if (element.nodeName === 'TD' && select === 1) {
+          check(e.currentTarget, element)
+          element.setAttribute('select-dom', 1)
+          window.getSelection().removeAllRanges();
+        }
+      })
+
+      function check (table, end) {
+        const trList = table.querySelectorAll('tr')
+        let count = 0
+        let firstIndex = [ -1, -1 ]
+        let endIndex = [ -1, -1 ]
+        for (let i = 0; i < trList.length; i++) {
+          let tdList = trList[i].querySelectorAll('td')
+          for (let j = 0; j < tdList.length; j++) {
+            // 判断其是否缩进
+            if (tdList[j].getAttribute('select-dom-first') === '1') {
+              firstIndex = [ i, j ]
+            }
+
+            if (tdList[j] === end) {
+              endIndex = [ i, j]
+            }
+          }
+        }
+
+        for (let i = firstIndex[0]; i <= endIndex[0]; i++) {
+          let tdList = trList[i].querySelectorAll('td')
+          for (let j = firstIndex[1]; j <= endIndex[1]; j++) {
+            tdList[j].setAttribute('select-dom', 1)
+          }
+        }
+      }
+
+      function compose () {
+        console.log('compose')
+        // 找到第一个节点
+        let tableNode = document.querySelector('table')
+        const trList = tableNode.querySelectorAll('tr')
+        const tdList = tableNode.querySelectorAll('td')
+        const tdArray = new Array(...tdList)
+        let firstColmark
+
+        const firstNode = tdArray.find(node => {
+          return node.getAttribute('select-dom-first') === '1'
+        })
+
+        const endNode = tdArray.find(node => {
+          return node.getAttribute('select-dom-last') === '1'
+        })
+
+        let colspan = 0
+        for (let i = 0; i < trList.length; i++) {
+          colspan = 0
+          let tdListbyTr = trList[i].querySelectorAll('td')
+          for (let j = 0; j < tdListbyTr.length; j ++) {
+            if (tdListbyTr[j].getAttribute('select-dom') === '1') {
+              if (!firstColmark) {
+                firstColmark = [ i, j ]
+              }
+              
+              colspan = colspan + tdListbyTr[j].colSpan
+            }
+          }
+          if (colspan > 0) break;
+        }
+        let rowspan = 0
+        for (let i = 0; i < trList.length;) {
+          let tdListbyTr = trList[i].querySelectorAll('td')
+          if (tdListbyTr[firstColmark[1]].getAttribute('select-dom') === '1') {
+            let tdrowspan = tdListbyTr[firstColmark[1]].rowSpan
+            rowspan = rowspan + tdrowspan
+            i = i + tdrowspan
+          } else {
+            i++
+          }
+        }
+
+        // 删除所有被选中的td,带有select-dom标记的td
+        for (let k = 0 ; k < tdList.length; k++) {
+          if (tdList[k].getAttribute('select-dom') === '1' && !tdList[k].getAttribute('select-dom-first')) {
+            tdList[k].remove()
+          }
+        }
+
+        firstNode.colSpan = colspan
+        firstNode.rowSpan = rowspan
+        // 遍历tr,需要找到如何设置colspan和rowsapn
+        for (let i = 0; i < trList.length; i++) {
+        }
+      }
+
+      document.querySelector('#compose').addEventListener('click', () => {
+        compose()
+      })
+
+    </script>
     <div id="root"></div>
     <!--
       This HTML file is a template.
