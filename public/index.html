@@ -104,7 +104,6 @@
         let element = e.target;
         if (element.nodeName === 'TD' && select === 1) {
           select = 0
-          console.log('td')
           element.setAttribute('select-dom-last', 1)
         }
       })
@@ -218,18 +217,27 @@
         let firstStartNode = calculateStartNode(trList)
         let firstEndNode = calculateEndNode(trList, end)
 
-        let colOffset = firstEndNode['colIndex'] + firstEndNode.node.colSpan - firstStartNode['colIndex']
-        let rowOffset = firstEndNode['trIndex'] + firstEndNode.node.rowSpan - firstStartNode['trIndex']
-        console.log(colOffset, rowOffset)
+        let colOffset = firstEndNode['colIndex'] + firstEndNode.node.colSpan - firstStartNode['colIndex'] - 1
+        let rowOffset = firstEndNode['trIndex'] + firstEndNode.node.rowSpan - firstStartNode['trIndex'] - 1
+        console.log(firstStartNode, firstEndNode)
+        console.log(rowOffset, colOffset)
 
-        for (let i = firstStartNode['trIndex']; i <= rowOffset; i++) {
+        for (let i = firstStartNode['trIndex']; i <= (firstStartNode['trIndex'] + rowOffset ); i++) {
           let tdList = trList[i].querySelectorAll('td')
-          let tempOffset = colOffset
+          let tempOffset = (firstStartNode['colIndex'] + colOffset)
           let j = firstStartNode['colIndex']
-          while(j <= colOffset) {
-            tdList[j].setAttribute('select-dom', 1)
-            colOffset = colOffset - tdList[i].colSpan + 1
-            j++
+
+          // count 用于计算当前的真实的标记，如果存在colspan则需要加上colspan
+          let count = 0
+          for (let k = 0; k < tdList.length, count <= tempOffset ; k++) {
+            if (tdList[k].colSpan > 1) {
+              count = count + tdList[k].colSpan
+            } else {
+              count ++
+            }
+            if (count > firstStartNode['colIndex'] && count <= tempOffset) {
+              tdList[k].setAttribute('select-dom', 1)
+            }
           }
         }
       }
@@ -246,9 +254,21 @@
           return node.getAttribute('select-dom-first') === '1'
         })
 
-        let { colspan, rowspan } = colOffset(trList)
-        firstNode.colSpan = colspan
-        firstNode.rowSpan = rowspan
+
+        const end = tdArray.find(node => {
+          return node.getAttribute('select-dom-last') === '1'
+        })
+
+
+        let firstStartNode = calculateStartNode(trList)
+        let firstEndNode = calculateEndNode(trList, end)
+
+        let colOffset = firstEndNode['colIndex'] + firstEndNode.node.colSpan - firstStartNode['colIndex']
+        let rowOffset = firstEndNode['trIndex'] + firstEndNode.node.rowSpan - firstStartNode['trIndex']
+
+        // let { colspan, rowspan } = colOffset(trList)
+        firstNode.colSpan = colOffset
+        firstNode.rowSpan = rowOffset
         // 删除所有被选中的td,带有select-dom标记的td
         remove(tdList)
       }
@@ -265,42 +285,6 @@
           }
         }
       }
-
-      function colOffset (trList) {
-        let firstColmark
-        let colspan = 0
-        for (let i = 0; i < trList.length; i++) {
-          colspan = 0
-          let tdListbyTr = trList[i].querySelectorAll('td')
-          for (let j = 0; j < tdListbyTr.length; j ++) {
-            if (tdListbyTr[j].getAttribute('select-dom') === '1') {
-              if (!firstColmark) {
-                firstColmark = [ i, j ]
-              }
-              
-              colspan = colspan + tdListbyTr[j].colSpan
-            }
-          }
-          if (colspan > 0) break;
-        }
-
-        let rowspan = 0
-
-        // TODO: 有问题，还是需要记录真实的col和row,否则可能会问题
-        for (let i = 0; i < trList.length;) {
-          let tdListbyTr = trList[i].querySelectorAll('td')
-          if (tdListbyTr[firstColmark[1]].getAttribute('select-dom') === '1') {
-            let tdrowspan = tdListbyTr[firstColmark[1]].rowSpan
-            rowspan = rowspan + tdrowspan
-            i = i + tdrowspan
-          } else {
-            i++
-          }
-        }
-
-        return { colspan, rowspan }
-      }
-
     </script>
     <div id="root"></div>
     <!--
