@@ -119,29 +119,117 @@
         }
       })
 
+      // 计算偏移量
+      function calculateStartNode (trList) {
+        
+        let trIndex = 0
+        for (let t = 0; t < trList.length; t++) {
+          let tempTdLis = trList[t].querySelectorAll('td');
+          for (let k = 0 ; k < tempTdLis.length; k++) {
+            if (tempTdLis[k].getAttribute('select-dom-first') === '1') {
+              trIndex = t;
+              break;
+            }
+          }
+          if (trIndex !== 0) {
+            break;
+          }
+        }
+
+        const firstNodeTr = trList[trIndex]
+        let firstNode
+        const firstNodeTrTd = firstNodeTr.querySelectorAll('td')
+        let indexCount = 0
+        let colIndex = 0
+        for (let i = 0; i < firstNodeTrTd.length; i++) {
+          if (firstNodeTrTd[i].getAttribute('select-dom-first') === '1') {
+            firstNode = firstNodeTrTd[i]
+            break;
+          } else {
+            indexCount = indexCount + firstNodeTrTd[i].colSpan
+          }
+        }
+        colIndex = indexCount
+
+        return {
+          node: firstNode,
+          trIndex,
+          colIndex 
+        }
+      }
+
+      function calculateEndNode (trList, end) {
+
+        let trIndex = 0
+        for (let t = 0; t < trList.length; t++) {
+          let tempTdLis = trList[t].querySelectorAll('td');
+          for (let k = 0 ; k < tempTdLis.length; k++) {
+            if (tempTdLis[k] === end) {
+              trIndex = t;
+              break;
+            }
+          }
+          if (trIndex !== 0) {
+            break;
+          }
+        }
+
+        const firstNodeTr = trList[trIndex]
+        const firstNodeTrTd = firstNodeTr.querySelectorAll('td')
+        let indexCount = 0
+        let colIndex = 0
+
+        for (let i = 0; i < firstNodeTrTd.length; i++) {
+          if (firstNodeTrTd[i] === end) {
+            break;
+          } else {
+            indexCount = indexCount + firstNodeTrTd[i].colSpan
+          }
+        }
+        colIndex = indexCount
+
+        return {
+          node: end,
+          trIndex,
+          colIndex
+        }
+      }
+
+      function findMaxOffset (trList, firstNode, endNode) {
+        let startTr = trList[firstNode[0]]
+        let endTr = trList[endNode[0]]
+
+        let startTrTdList = startTr.querySelectorAll('td')
+        let endTrTdList = endTr.querySelectorAll('td')
+        
+        let colOffset = endNode['colIndex'] + endNode['colIndex'].colSpan - firstNode['colIndex']
+        let rowOffset = endNode['trIndex'] + endNode['trIndex'].rowSpan - firstNode['trIndex']
+      }
+
       function check (table, end) {
         const trList = table.querySelectorAll('tr')
         let count = 0
         let firstIndex = [ -1, -1 ]
         let endIndex = [ -1, -1 ]
-        for (let i = 0; i < trList.length; i++) {
-          let tdList = trList[i].querySelectorAll('td')
-          for (let j = 0; j < tdList.length; j++) {
-            // 判断其是否缩进
-            if (tdList[j].getAttribute('select-dom-first') === '1') {
-              firstIndex = [ i, j ]
-            }
+        let coloffset = 0
+        let rowoffset = 0
+        
+        // 坐标，第几行第几个，但不包含自身所占据的位置
+        let firstStartNode = calculateStartNode(trList)
+        let firstEndNode = calculateEndNode(trList, end)
 
-            if (tdList[j] === end) {
-              endIndex = [ i, j]
-            }
-          }
-        }
+        let colOffset = firstEndNode['colIndex'] + firstEndNode.node.colSpan - firstStartNode['colIndex']
+        let rowOffset = firstEndNode['trIndex'] + firstEndNode.node.rowSpan - firstStartNode['trIndex']
+        console.log(colOffset, rowOffset)
 
-        for (let i = firstIndex[0]; i <= endIndex[0]; i++) {
+        for (let i = firstStartNode['trIndex']; i <= rowOffset; i++) {
           let tdList = trList[i].querySelectorAll('td')
-          for (let j = firstIndex[1]; j <= endIndex[1]; j++) {
+          let tempOffset = colOffset
+          let j = firstStartNode['colIndex']
+          while(j <= colOffset) {
             tdList[j].setAttribute('select-dom', 1)
+            colOffset = colOffset - tdList[i].colSpan + 1
+            j++
           }
         }
       }
@@ -153,16 +241,33 @@
         const trList = tableNode.querySelectorAll('tr')
         const tdList = tableNode.querySelectorAll('td')
         const tdArray = new Array(...tdList)
-        let firstColmark
 
         const firstNode = tdArray.find(node => {
           return node.getAttribute('select-dom-first') === '1'
         })
 
-        const endNode = tdArray.find(node => {
-          return node.getAttribute('select-dom-last') === '1'
-        })
+        let { colspan, rowspan } = colOffset(trList)
+        firstNode.colSpan = colspan
+        firstNode.rowSpan = rowspan
+        // 删除所有被选中的td,带有select-dom标记的td
+        remove(tdList)
+      }
 
+      document.querySelector('#compose').addEventListener('click', () => {
+        compose()
+      })
+
+      function remove (tdList) {
+        // 删除所有被选中的td,带有select-dom标记的td
+        for (let k = 0 ; k < tdList.length; k++) {
+          if (tdList[k].getAttribute('select-dom') === '1' && !tdList[k].getAttribute('select-dom-first')) {
+            tdList[k].remove()
+          }
+        }
+      }
+
+      function colOffset (trList) {
+        let firstColmark
         let colspan = 0
         for (let i = 0; i < trList.length; i++) {
           colspan = 0
@@ -178,7 +283,10 @@
           }
           if (colspan > 0) break;
         }
+
         let rowspan = 0
+
+        // TODO: 有问题，还是需要记录真实的col和row,否则可能会问题
         for (let i = 0; i < trList.length;) {
           let tdListbyTr = trList[i].querySelectorAll('td')
           if (tdListbyTr[firstColmark[1]].getAttribute('select-dom') === '1') {
@@ -190,23 +298,8 @@
           }
         }
 
-        // 删除所有被选中的td,带有select-dom标记的td
-        for (let k = 0 ; k < tdList.length; k++) {
-          if (tdList[k].getAttribute('select-dom') === '1' && !tdList[k].getAttribute('select-dom-first')) {
-            tdList[k].remove()
-          }
-        }
-
-        firstNode.colSpan = colspan
-        firstNode.rowSpan = rowspan
-        // 遍历tr,需要找到如何设置colspan和rowsapn
-        for (let i = 0; i < trList.length; i++) {
-        }
+        return { colspan, rowspan }
       }
-
-      document.querySelector('#compose').addEventListener('click', () => {
-        compose()
-      })
 
     </script>
     <div id="root"></div>
